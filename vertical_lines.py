@@ -54,7 +54,6 @@ def two_points_between_distance(green_lines):
     for gl in green_lines:
         d = math.sqrt(((gl[1] - gl[0])**2) + ((gl[3][-1] - gl[2])**2))
         distance += d
-        print(d)
         d = 0.0
     return distance
 
@@ -147,8 +146,6 @@ for ln in lines:
         
 draw_lines(green_lines, "green")
 distance = two_points_between_distance(green_lines)
-print(lines[0][3][-1])
-print(data.shape[0])
-print(data.shape[1])
+print("Tavolsag: ", distance)
 plt.imshow(data)
 plt.show()
