@@ -2,6 +2,7 @@ from matplotlib import image
 from matplotlib import pyplot as plt
 import numpy as np
 import math
+import time
 
 def sortFirst(val):
     return val[0]
@@ -57,54 +58,52 @@ def two_points_between_distance(green_lines):
 
 
 #Map reading
-data = image.imread('Map5.png')
+start_time = time.time()
+data = image.imread('Map2.png')
+mr_size = 17
+half_of_mr = mr_size // 2
 
 #search black points in image
 
-cnt = 0
 coord = [] 
 black_points = [] 
 black = False
-for y in range(5, data.shape[0] - 5):
+for y in range(half_of_mr, data.shape[0], half_of_mr):
     black = False
-    for x in range(5, data.shape[1] - 5):
+    for x in range(half_of_mr, data.shape[1] - half_of_mr):
         for k in range(data.shape[2]):
             if data[y, x, k] == 0:
-                cnt += 1
                 black = True
                 coord += y, x
                 black_points.append(coord)
                 coord = []
                 break
-        
         if black:
             break
-
-for y in range(data.shape[0] - 5, 5, -1):
+end = y
+for y in range(end, 0, -half_of_mr):
     black = False
-    for x in range(data.shape[1] - 5, 5, -1):
+    for x in range(data.shape[1] - half_of_mr, half_of_mr, -1):
         for k in range(data.shape[2]):
             if data[y, x, k] == 0:
-                cnt += 1
                 black = True
                 coord += y, x
                 black_points.append(coord)
                 coord = []
                 break
-        
         if black:
             break
 
 #save in array lines
 lines = []
-x1 = 5
-x2 = data.shape[1]
-y1 = 5
-y2 = 5
+x1 = half_of_mr
+x2 = data.shape[1] - half_of_mr
+y1 = half_of_mr
+y2 = half_of_mr
 while y1 < data.shape[0] and y2 < data.shape[0]:
     lines.append(save_line(x1, x2, y1, y2))
-    y1 += 10
-    y2 += 10
+    y1 += half_of_mr
+    y2 += half_of_mr
  
 # draw lines
 draw_lines(lines, "blue")
@@ -145,5 +144,11 @@ for ln in lines:
 draw_lines(green_lines, "green")
 distance = two_points_between_distance(green_lines)
 print("Tavolsag: ", distance)
+
+
+end_time = time.time()
+print("--- %s seconds ---" % ( end_time- start_time))
+print(black_points)
+
 plt.imshow(data)
 plt.show()
