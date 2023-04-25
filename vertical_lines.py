@@ -34,13 +34,20 @@ def index_of_array(bp, val):
         idx_list.append(l)
         return idx_list
  
-def save_line(x1, x2, y1, y2_last):
+def save_line1(x1, x2, y1, y2_last):
     line = []
     y2 = []
     for i in range(1, y2_last):
         y2.append(i)
     line.append(x1)
     line.append(x2)
+    line.append(y1)
+    line.append(y2)
+    return line
+
+def save_line2(x1, y1, y2):
+    line = []
+    line.append(x1)
     line.append(y1)
     line.append(y2)
     return line
@@ -60,7 +67,7 @@ def two_points_between_distance(green_lines):
 
 #Map reading
 start_time = time.time()
-data = image.imread('Map2.png')
+data = image.imread('Map5.png')
 mr = 31
 half_of_mr = mr // 2
 
@@ -103,7 +110,7 @@ x2 = half_of_mr
 y1 = half_of_mr
 y2 = data.shape[0] - half_of_mr
 while x1 < data.shape[1] and x2 < data.shape[1]:
-    lines.append(save_line(x1, x2, y1, y2))
+    lines.append(save_line1(x1, x2, y1, y2))
     x1 += half_of_mr
     x2 += half_of_mr
  
@@ -137,22 +144,41 @@ bp = np.array(black_points)
 
 #road
 green_lines = []
+all_lines = []
+full_lines = []
+half_lines1 = []
+half_lines2 = []
 for ln in lines:
     idx_list = index_of_array(bp, ln[0])
     if idx_list[0] == False:
-        green_lines.append(save_line(ln[0], ln[1], ln[2], ln[3][-1]))
+        if len(half_lines1) > 0 and len(half_lines2) > 0:
+            all_lines.append(half_lines1)
+            all_lines.append(half_lines2)
+            half_lines1 = []
+            half_lines2 = []
+        green_lines.append(save_line1(ln[0], ln[1], ln[2], ln[3][-1]))
+        auxiliary_list1 = save_line2(ln[0], ln[2], ln[3][-1])
+        full_lines.append(auxiliary_list1)
     else:
-        green_lines.append(save_line(ln[0], ln[1], ln[2], black_points[idx_list[1][0]][0]))
-        green_lines.append(save_line(ln[0],  ln[1], black_points[idx_list[1][1]][0],ln[3][-1]))
-        
+        if len(full_lines) > 0:
+            all_lines.append(full_lines)
+            full_lines = []
+        green_lines.append(save_line1(ln[0], ln[1], ln[2], black_points[idx_list[1][0]][0]))
+        auxiliary_list2 = save_line2(ln[0], ln[2], black_points[idx_list[1][0]][0])
+        half_lines1.append(auxiliary_list2)
+        green_lines.append(save_line1(ln[0],  ln[1], black_points[idx_list[1][1]][0],ln[3][-1]))
+        auxiliary_list3 = save_line2(ln[1], black_points[idx_list[1][1]][0],ln[3][-1])
+        half_lines2.append(auxiliary_list3)
+all_lines.append(full_lines)
+
+#distances     
 draw_lines(green_lines, "green")
 distance = two_points_between_distance(green_lines)
 print("Tavolsag: ", distance)
 
-
+#running time
 end_time = time.time()
 print("--- %s seconds ---" % ( end_time- start_time))
-print(black_points)
 
 plt.imshow(data)
 plt.show()
