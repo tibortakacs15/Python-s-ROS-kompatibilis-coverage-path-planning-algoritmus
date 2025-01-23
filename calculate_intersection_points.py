@@ -1,8 +1,16 @@
- import numpy as np
+import numpy as np
 import math
 import matplotlib.pyplot as plt
+import copy
 
 # calculate_intersection_points.py
+
+SQUARE_ROOR_2 = math.sqrt(2)
+
+def deep_swap(array, index1, index2):
+    temp = copy.deepcopy(array[index1]) 
+    array[index1] = copy.deepcopy(array[index2])  
+    array[index2] = temp  
 
 # Convert RGB to grayscale manually
 def rgb2gray(rgb):
@@ -12,7 +20,7 @@ def rgb2gray(rgb):
 def calculate_edges_coordinates(labeled_edges, number):
     coordinate_points = []
     if number > 2:
-        for n in range(3, number, 1):
+        for n in range(3, number + 1, 1):
             coord = np.where(labeled_edges == n)
             for c1, c2 in zip(coord[0], coord[1]):
                 points = []
@@ -40,92 +48,178 @@ def min_max_coord(coordinate_points):
     min_max_x_y = [min_x_coord, min_y_coord, max_x_coord, max_y_coord]
     return min_max_x_y
 
-
 # Calculating the degree by slope
 def degrees_to_slope(degrees):
-    """Convert an angle in degrees to the slope of a line."""
     radians = np.radians(degrees)
     return np.tan(radians)
 
-def draw_parallel_lines_with_angle(image, angle_degrees, spacing, scale_factor, min_max_x_y_coord):
+def draw_parallel_lines_with_angle(image, min_max_x_y_coord, angle_degrees, robot_size, scale_factor):
     height, width = image.shape[:2]
+    spacing = robot_size // 2
     
-    # Angle degree conver to radian
+
+    # Angle degree to radian
     angle_radians = math.radians(angle_degrees)
     
-    # Calculating an offset perpendicular to the direction of a line
-    offset_x = spacing * math.sin(angle_radians)
-    offset_y = spacing * math.cos(angle_radians)
+    # Special cases for 0°, 90°, 180°, 270°
+    if angle_degrees == 0:
+        offset_x, offset_y = 0, spacing
+    elif angle_degrees == 90:
+        offset_x, offset_y = spacing, 0
+    elif angle_degrees == 180:
+        offset_x, offset_y = 0, -spacing
+    elif angle_degrees == 270:
+        offset_x, offset_y = -spacing, 0
+    else:
+        offset_x = spacing * math.sin(angle_radians)
+        offset_y = spacing * math.cos(angle_radians)
     
-    # Calculating the start and end points of a baseline
-    if 0 <= angle_degrees < 90:
-        start_x, start_y = 0, height  # bal alsó sarok
+    # Calculate baseline start and end points
+    if angle_degrees == 0:
+        start_x, start_y = 0, height
+        end_x, end_y = width, height
+    elif angle_degrees == 90:
+        start_x, start_y = 0, 0
+        end_x, end_y = 0, height
+    elif angle_degrees == 180:
+        start_x, start_y = width, 0
+        end_x, end_y = 0, 0
+    elif angle_degrees == 270:
+        start_x, start_y = width, height
+        end_x, end_y = width, 0
+    else:
+        start_x, start_y = 0, height
         end_x = width
         end_y = height - width * math.tan(angle_radians)
-    elif 90 <= angle_degrees < 180:
-        start_x, start_y = width, height  # jobb alsó sarok
-        end_x = width + height / math.tan(angle_radians)
-        end_y = 0
-    elif 180 <= angle_degrees < 270:
-        start_x, start_y = width, 0  # jobb felső sarok
-        end_x = 0
-        end_y = width * math.tan(angle_radians - math.pi)
-    else:
-        start_x, start_y = 0, 0  # bal felső sarok
-        end_x = height / math.tan(math.pi * 2 - angle_radians)
-        end_y = height
-
- # Apply scaling to start and end points
+    
+    # Apply scaling
     center_x = (start_x + end_x) / 2
     center_y = (start_y + end_y) / 2
     start_x = center_x + (start_x - center_x) * scale_factor
     start_y = center_y + (start_y - center_y) * scale_factor
     end_x = center_x + (end_x - center_x) * scale_factor
     end_y = center_y + (end_y - center_y) * scale_factor
-
-    # Calculating number of lines
-    if width > height:
-        num_lines = int(width / spacing)
-    else :
-        num_lines = int(height / spacing)
+    
+    # Generate lines
+    num_lines = max(width, height) // (spacing // 2)
     lines = []
-    for i in range(-num_lines, num_lines):
-        line = []
-        # Shifting the start and end points
+    for i in range(-num_lines, num_lines + 1):
         line_start_x = start_x + i * offset_x
         line_start_y = start_y + i * offset_y
         line_end_x = end_x + i * offset_x
         line_end_y = end_y + i * offset_y
-
-        # Good line that intersects the map
-        intersection1 = find_intersection_of_segments([min_max_x_y_coord[0], min_max_x_y_coord[1]], [min_max_x_y_coord[2], min_max_x_y_coord[3]], [line_start_x, line_start_y], [line_end_x, line_end_y])
-        intersection2 = find_intersection_of_segments([min_max_x_y_coord[0], min_max_x_y_coord[3]], [min_max_x_y_coord[2], min_max_x_y_coord[1]], [line_start_x, line_start_y], [line_end_x, line_end_y])
-        if intersection1 != None or intersection2 != None:
-            line.append(np.array([line_start_x, line_start_y])) 
-            line.append(np.array([line_end_x, line_end_y]))
-            lines.append(line)
+        
+        clipped_line = liang_barsky_clip(line_start_x, line_start_y, line_end_x, line_end_y, min_max_x_y_coord)
+        if clipped_line:
+            lines.append([
+                np.array([round(clipped_line[0]), round(clipped_line[1])]),
+                np.array([round(clipped_line[2]), round(clipped_line[3])])
+            ])
+       
     return lines
+
+# Keeps the value within the allowed range
+def clamp(value, min_value, max_value):
+    return max(min(value, max_value), min_value, )
+
+# Liang-Barsky algorithm for cutting lines within an image frame.
+def liang_barsky_clip(x1, y1, x2, y2, min_max_x_y_coord):
+    x_min = min_max_x_y_coord[0]
+    y_min  = min_max_x_y_coord[1]
+    x_max = min_max_x_y_coord[2]
+    y_max = min_max_x_y_coord[3]
+    
+    def clip(p, q, t0, t1):
+        if p == 0:  # Párhuzamos éllel
+            return (t0, t1) if q >= 0 else (None, None)
+        t = q / p
+        if p < 0:
+            if t > t1:
+                return None, None
+            if t > t0:
+                t0 = t
+        else:
+            if t < t0:
+                return None, None
+            if t < t1:
+                t1 = t
+        return t0, t1
+
+    dx = x2 - x1
+    dy = y2 - y1
+    t0, t1 = 0, 1
+
+    t0, t1 = clip(-dx, x1 - x_min, t0, t1)
+    if t0 is None: return None
+    t0, t1 = clip(dx, x_max - x1, t0, t1)
+    if t0 is None: return None
+    t0, t1 = clip(-dy, y1 - y_min, t0, t1)
+    if t0 is None: return None
+    t0, t1 = clip(dy, y_max - y1, t0, t1)
+    if t0 is None: return None
+
+    new_x1 = x1 + t0 * dx
+    new_y1 = y1 + t0 * dy
+    new_x2 = x1 + t1 * dx
+    new_y2 = y1 + t1 * dy
+
+    return round(new_x1), round(new_y1), round(new_x2), round(new_y2)
+
+# Bresenham's algorithms 
+def bresenham(x1, y1, x2, y2):
+    points = []
+    
+    dx = abs(x2 - x1)
+    dy = abs(y2 - y1)
+    sx = 1 if x1 < x2 else -1
+    sy = 1 if y1 < y2 else -1
+    err = dx - dy
+    
+    while True:
+        points.append((x1, y1))
+        
+        if x1 == x2 and y1 == y2:
+            break
+        e2 = err * 2
+        if e2 > -dy:
+            err -= dy
+            x1 += sx
+        if e2 < dx:
+            err += dx
+            y1 += sy
+    
+    return np.array(points)
+# Cuts the line to the edges of the picture frame and then calculates the points with Bresenham.
+def clip_and_draw_line(start_x, start_y, end_x, end_y, min_max_x_y_coord):
+    x_min, y_min, x_max, y_max = min_max_x_y_coord
+    
+    # Cut the line first
+    clipped = liang_barsky_clip(start_x, start_y, end_x, end_y, x_min, y_min, x_max, y_max)
+    
+    if clipped is None:
+        return np.array([]) # If the line is completely outside, return with an empty list
+
+    x1, y1, x2, y2 = clipped
+
+    # Calculates points using Bresenham algorithm
+    return bresenham(x1, y1, x2, y2)
 
 #  The shape points located between parallel lines
 def edges_of_the_shapes(lines, n_coordinate_points, angle_degrees):
     edge_coordinates  = []
-    for l in range(len(lines)):
-        if angle_degrees <= 180:
-            end, start = lines[l][0][1], lines[l][1][1] # paralell lines start and end points
-        elif angle_degrees > 180:
-            start, end = lines[l][0][1], lines[l][1][1] # paralell lines start and end points
-        start = int(math.floor(start))
-        end = int(math.ceil(end))
-        condition = (n_coordinate_points[:, 1] >= start) & (n_coordinate_points[:, 1] <= end)  
-        result = n_coordinate_points[condition]
-        edge_coordinates.append(result)
+    if angle_degrees <= 180:
+        end, start = lines[0][1], lines[-1][1] # paralell lines start and end points
+    elif angle_degrees > 180:
+        start, end = lines[0][1], lines[-1][1] # paralell lines start and end points
+    condition = (n_coordinate_points[:, 1] >= start) & (n_coordinate_points[:, 1] <= end)  
+    result = n_coordinate_points[condition]
+    edge_coordinates.append(result)
     return edge_coordinates
 
 # Function to calculate the Euclidean distance between two points
 def calculate_distance(point1, point2):
     return math.sqrt((point2[0] - point1[0]) ** 2 + (point2[1] - point1[1]) ** 2)
 
-# 
 def connecting_the_points(edge_coordinates):
     segment = []
     
@@ -183,59 +277,237 @@ def insert_and_remove_one_coordinate_array(shape_coordinates):
 
 # Merge segments by distance
 def merge_segments(shape_coordinates):
+    if len(shape_coordinates) == 0:
+        return 0  # Exit with 0 instead of returning 'exit'
+
     is_merging = True
     while is_merging:
-        indexes = [] 
+        indexes = []
+        
+        # Populate 'indexes' with merge candidates
         for sh in range(len(shape_coordinates) - 1):
             start_x_y = shape_coordinates[sh][0]
             end_x_y = shape_coordinates[sh][-1]
             for s in range(sh + 1, len(shape_coordinates)):
                 other_start_x_y = shape_coordinates[s][0]
                 other_end_x_y = shape_coordinates[s][-1]
+
+                # Calculate distances
                 dist1 = calculate_distance(start_x_y, other_start_x_y)
                 dist2 = calculate_distance(start_x_y, other_end_x_y)
                 dist3 = calculate_distance(end_x_y, other_end_x_y)
                 dist4 = calculate_distance(end_x_y, other_start_x_y)
-                if dist1 < 1.42:
-                    indexes.extend([['dist1', sh, s]])
-                if dist2 < 1.42:
-                    indexes.extend([['dist2', sh, s]])
-                if dist3 < 1.42:
-                    indexes.extend([['dist3', sh, s]])
-                if dist4 < 1.42:
-                    indexes.extend([['dist4', sh, s]])
+
+                # Check if merging is possible and append indexes
+                if dist1 <= SQUARE_ROOR_2:
+                    indexes.append(['dist1', sh, s])
+                if dist2 <= SQUARE_ROOR_2:
+                    indexes.append(['dist2', sh, s])
+                if dist3 <= SQUARE_ROOR_2:
+                    indexes.append(['dist3', sh, s])
+                if dist4 <= SQUARE_ROOR_2:
+                    indexes.append(['dist4', sh, s])
+
+        # Initialize sorted_indexes to avoid UnboundLocalError
+        sorted_indexes = []
+        if len(indexes) > 0:
             sorted_indexes = sorted(indexes, key=lambda x: x[2], reverse=True)
-            
-        unique_indexes = []
-        seen_third_elements = set()
-        for item in sorted_indexes:
-            if item[2] not in seen_third_elements:
-                unique_indexes.append(item)
-                seen_third_elements.add(item[2])
-        for un_idx in range(len(unique_indexes)):
-            if unique_indexes[un_idx][0] == 'dist1':
-                shape_coordinates[unique_indexes[un_idx][2]][:] = shape_coordinates[unique_indexes[un_idx][2]][::-1]
-                shape_coordinates[unique_indexes[un_idx][1]] = np.vstack([shape_coordinates[unique_indexes[un_idx][2]], shape_coordinates[unique_indexes[un_idx][1]]])
-            elif unique_indexes[un_idx][0] == 'dist2':
-                shape_coordinates[unique_indexes[un_idx][1]] = np.vstack([shape_coordinates[unique_indexes[un_idx][2]], shape_coordinates[unique_indexes[un_idx][1]]])
-            elif unique_indexes[un_idx][0] == 'dist3':
-                shape_coordinates[unique_indexes[un_idx][2]][:] = shape_coordinates[unique_indexes[un_idx][2]][::-1]
-                shape_coordinates[unique_indexes[un_idx][1]] = np.vstack([shape_coordinates[unique_indexes[un_idx][1]], shape_coordinates[unique_indexes[un_idx][2]]])
-            elif unique_indexes[un_idx][0] == 'dist4':
-                shape_coordinates[unique_indexes[un_idx][1]] = np.vstack([shape_coordinates[unique_indexes[un_idx][1]], shape_coordinates[unique_indexes[un_idx][2]]])
-        if len(unique_indexes) > 0:  
+
+        if len(sorted_indexes) > 0:
+            # Filter unique indexes
+            unique_indexes = []
+            seen_third_elements = set()
+            for item in sorted_indexes:
+                if item[2] not in seen_third_elements:
+                    unique_indexes.append(item)
+                    seen_third_elements.add(item[2])
+
+            # Perform the merging process
             for un_idx in range(len(unique_indexes)):
-                del (shape_coordinates[unique_indexes[un_idx][2]])
-        else: 
-            is_merging = False
+                dist_type, idx1, idx2 = unique_indexes[un_idx]
+                if dist_type == 'dist1':
+                    shape_coordinates[idx2][:] = shape_coordinates[idx2][::-1]
+                    shape_coordinates[idx1] = np.vstack([shape_coordinates[idx2], shape_coordinates[idx1]])
+                elif dist_type == 'dist2':
+                    shape_coordinates[idx1] = np.vstack([shape_coordinates[idx2], shape_coordinates[idx1]])
+                elif dist_type == 'dist3':
+                    shape_coordinates[idx2][:] = shape_coordinates[idx2][::-1]
+                    shape_coordinates[idx1] = np.vstack([shape_coordinates[idx1], shape_coordinates[idx2]])
+                elif dist_type == 'dist4':
+                    shape_coordinates[idx1] = np.vstack([shape_coordinates[idx1], shape_coordinates[idx2]])
+
+            # Delete merged shapes
+            for un_idx in range(len(unique_indexes)):
+                del shape_coordinates[unique_indexes[un_idx][2]]
+
+        else:
+            is_merging = False  # No more merges possible
+
+    return 0
+
+# Moving perfect shapes in  new array
+def perfect_shapes(shape_coordinates):
+    del_shapes = []
+    shapes = []
+    if len(shape_coordinates) > 0:
+        for s in range(len(shape_coordinates)):
+            first_coord = shape_coordinates[s][0]
+            last_coord = shape_coordinates[s][-1]
+            dist = calculate_distance(first_coord, last_coord)
+            if dist <= SQUARE_ROOR_2:
+                shape_coordinates[s] = np.vstack((shape_coordinates[s], first_coord))
+                shapes.extend([shape_coordinates[s]])
+                del_shapes.append(s)
+        sort_del_shape = sorted(del_shapes, reverse=True)
+        if len(sort_del_shape) > 0:  
+                for ds_idx in range(len(sort_del_shape)):
+                    del (shape_coordinates[sort_del_shape[ds_idx]])
+    
+    return shapes
+
+# Checking start and end points in arrays
+def checking_start_and_end_points1(shape_coordinates):
+    if len(shape_coordinates) == 0:
+        return False
+    is_change = False
     for s in range(len(shape_coordinates)):
         first_coord = shape_coordinates[s][0]
         last_coord = shape_coordinates[s][-1]
         dist = calculate_distance(first_coord, last_coord)
-        if dist < 1.42:
+        if dist <= SQUARE_ROOR_2:
             shape_coordinates[s] = np.vstack((shape_coordinates[s], first_coord))
+        else:
+            for sublist in shape_coordinates:
+                if len(sublist) > 6:
+                    dist1 = calculate_distance(sublist[0], sublist[1])
+                    dist2 = calculate_distance(sublist[1], sublist[2])
+                    dist3 = calculate_distance(sublist[0], sublist[2])
+                    dist4 = calculate_distance(sublist[0], sublist[3])
+                   
+                    if (dist1 == 1 and dist2 == 1 and dist3 == SQUARE_ROOR_2 and dist4 == 2):
+                        deep_swap(sublist, 0, 1)
+                        deep_swap(sublist, 0, 2)
+                        is_change = True
+                    elif dist1 == 1 and dist2 == SQUARE_ROOR_2 and dist3 == 1:
+                        deep_swap(sublist, 0, 1)
+                        is_change = True
+            
+            for sublist in shape_coordinates:
+                 if len(sublist) > 6:
+                    dist1 = calculate_distance(sublist[-1], sublist[-2])
+                    dist2 = calculate_distance(sublist[-2], sublist[-3])
+                    dist3 = calculate_distance(sublist[-1], sublist[-3])
+                    dist4 = calculate_distance(sublist[-1], sublist[-4])
+                    
+                    if dist1 == 1 and dist2 == 1 and dist3 == SQUARE_ROOR_2 and dist4 == 2:
+                        deep_swap(sublist, -1,-2)
+                        deep_swap(sublist, -1, -3)
+                        is_change = True
+                    elif dist1 == 1 and dist2 == SQUARE_ROOR_2 and dist3 == 1:
+                        deep_swap(sublist, -1, -2)
+                        is_change = True
+                        
+    return is_change
 
- # Calculate intersection points between two segments       
+# Checking start and end points in arrays
+def checking_start_and_end_points2(shape_coordinates):
+    if len(shape_coordinates) == 0:
+        return False
+    is_change = False
+    for s in range(len(shape_coordinates)):
+        first_coord = shape_coordinates[s][0]
+        last_coord = shape_coordinates[s][-1]
+        dist = calculate_distance(first_coord, last_coord)
+        if dist <= SQUARE_ROOR_2:
+            shape_coordinates[s] = np.vstack((shape_coordinates[s], first_coord))
+        else:
+            for sublist in shape_coordinates:
+                if len(sublist) > 6:
+                    dist1 = calculate_distance(sublist[0], sublist[1])
+                    dist2 = calculate_distance(sublist[1], sublist[2])
+                    dist3 = calculate_distance(sublist[0], sublist[2])
+                    if dist1 == 1 and dist2 == 1 and dist3 == SQUARE_ROOR_2:
+                        deep_swap(sublist, 0, 1)
+                        is_change  = True
+            for sublist in shape_coordinates:
+                 if len(sublist) > 6:
+                    dist1 = calculate_distance(sublist[-1], sublist[-2])
+                    dist2 = calculate_distance(sublist[-2], sublist[-3])
+                    dist3 = calculate_distance(sublist[-1], sublist[-3])
+                    if dist1 == 1 and dist2 == 1 and dist3 == SQUARE_ROOR_2:
+                        deep_swap(sublist, -1, -2)
+                        is_change  = True
+                       
+    return is_change 
+
+def result_detection(shape_coordinates, shapes):
+    if len(shape_coordinates) == 0:
+        is_empty = True
+    ok_shape = True
+    for s in shapes:
+        if not np.array_equal(s[0], s[-1]):
+            ok_shape = False
+
+    if is_empty and ok_shape:
+        print('The all shapes will detectation!')
+    else:
+        print('Does not detect all shapes!')
+
+#  The shape points located between parallel lines
+def edges_of_the_shapes(lines, shapes):
+    edge_coordinates  = []
+    for line in lines:
+        edge = []
+        end, start = line[-1][1], line[0][1] # paralell lines start and end points
+        if start > end:
+            start, end = end, start
+        for shape in shapes:
+            condition = (shape[:, 1] >= start) & (shape[:, 1] <= end)  
+            result = shape[condition]
+            if len(result) > 0:
+                edge.append(result)
+        edge_coordinates.append(edge)
+    return edge_coordinates
+
+def calculate_intersection_points(edge_coordinates, lines, angle_degrees):
+    intersection_points = [set() for _ in range(len(lines))]
+    for count, (edge_c, line) in enumerate(zip(edge_coordinates, lines)):
+        if len(edge_c) == 0 or len(line) < 2:
+            continue
+        for l in range(len(line) - 1):
+            for ec in edge_c:
+                if len(ec) < 2:
+                    continue
+                for e in range(len(ec) - 1):
+                    ip = find_intersection_of_segments(ec[e], ec[e + 1], line[l], line[l + 1])
+                    if ip is not None:
+                        if len(ip) == 2:  # One piece intersection points
+                            if angle_degrees >= 0 and angle_degrees < 90 or angle_degrees >= 180 and angle_degrees < 270:
+                                r_ip = (math.floor(ip[0]), math.floor(ip[1]))
+                            else:
+                                r_ip = (math.ceil(ip[0]), math.floor(ip[1]))
+                            intersection_points[count].add(r_ip)  # Add to set
+                        elif len(ip) == 4:  # Overlapping sections
+                            if angle_degrees >= 0 and angle_degrees < 90 or angle_degrees >= 180 and angle_degrees < 270:
+                                r_ip = (math.floor(ip[0]), math.floor(ip[1]))
+                            else:
+                                r_ip = (math.ceil(ip[0]), math.floor(ip[1]))
+                            for i in range(0, len(ip) - 1, 2):
+                                intersection_points[count].add((ip[i], ip[i + 1]))  # Add to set
+
+    # set to list conversion
+    intersection_points = [list(ips) for ips in intersection_points]
+    if angle_degrees >= 0 and angle_degrees < 90:
+        sorted_intersection_points = [sorted(row, key=lambda point: (point[0], -point[1])) for row in intersection_points]
+    elif angle_degrees >= 90 and angle_degrees < 180:
+        sorted_intersection_points = [sorted(row, key=lambda point: (-point[0], -point[1])) for row in intersection_points]
+    elif angle_degrees >= 180 and angle_degrees < 270:
+        sorted_intersection_points = [sorted(row, key=lambda point: (-point[0], point[1])) for row in intersection_points]
+    elif angle_degrees >= 270 and angle_degrees < 360:
+        sorted_intersection_points = [sorted(row, key=lambda point: (point[0], point[1])) for row in intersection_points]
+    return sorted_intersection_points
+
+# Calculate intersection points between two segments       
 def find_intersection_of_segments(segment1_f, segment1_e, segment2_f, segment2_e):
     # Start and end points of the first segment
 
@@ -268,7 +540,7 @@ def find_intersection_of_segments(segment1_f, segment1_e, segment2_f, segment2_e
                 return (overlap_x1, overlap_y1, overlap_x2, overlap_y2)
         return None  # Parallel, no intersection
     
-    # Cramer-szabály szerinti megoldás a t és u paraméterekre
+    # According to Cramer's rule
     numerator_t = (x3 - x1) * dy2 - (y3 - y1) * dx2
     numerator_u = (x3 - x1) * dy1 - (y3 - y1) * dx1
     
@@ -284,77 +556,68 @@ def find_intersection_of_segments(segment1_f, segment1_e, segment2_f, segment2_e
         return (intersection_x, intersection_y)
     else:
         return None  # There is no intersection between the two segments
-
-
-
-# Calculate intersection points by shape coordinates and lines
-def calculate_intersection_points(shape_coordinates, n_coordinate_points, n_internal_coordinate_points_of_barrier, lines, angle_degrees):
-    intersection_points = [[] for _ in range(len(lines))]
-    for idx in range(len(shape_coordinates)):
-        ec = edges_of_the_shapes(lines, shape_coordinates[idx], angle_degrees)
-        for count, (e, l) in enumerate(zip(ec, lines)):
-            if len(e) == 0:
-                continue
-            else:
-                for i in range(len(e) - 1):
-                    ip = find_intersection_of_segments( e[i],  e[i + 1], l[0], l[1])
-                    
-                    if ip != None:
-                        if len(ip) == 2:
-                            good_ip = good_intersection_point(n_coordinate_points, n_internal_coordinate_points_of_barrier, ip, angle_degrees, 1)
-                            if good_ip:
-                             intersection_points[count].append(ip)
-                        elif len(ip) == 4:
-                            for i in range(0, len(ip) - 1, 2):
-                                good_ip = good_intersection_point(n_coordinate_points, n_internal_coordinate_points_of_barrier, [ip[i], ip[i + 1]], angle_degrees, 1)
-                                if good_ip:
-                                    intersection_points[count].append((ip[i], ip[i + 1]))
-    # List converted to set due to duplicate points
-    set_intersection_points = [set(row) for row in intersection_points]
-    new_intersection_points = [list(row) for row in set_intersection_points]
-
-    sorted_intersection_points = [sorted(row, key=lambda point: point[0]) for row in new_intersection_points]
-    return sorted_intersection_points
-
-def good_intersection_point(n_coordinate_points, n_internal_coordinate_points_of_barrier, ip, angle_deg, d):
-    angle_rad = math.radians(angle_deg) 
-    # Offset point by distance d
-    dx = (-d) * math.cos(angle_rad)
-    dy = (-d) * math.sin(angle_rad)
-
-    b_x_new = ip[0] + dx
-    b_y_new = ip[1] + dy
-
-    dx = d * math.cos(angle_rad)
-    dy = d * math.sin(angle_rad)
-
-    a_x_new = ip[0] + dx
-    a_y_new = ip[1] + dy
-
-    talalat1 = np.where((n_coordinate_points == [a_x_new, a_y_new]).all(axis=1))[0]
-    talalat2 = np.where((n_coordinate_points == [b_x_new, b_y_new]).all(axis=1))[0]
-    talalat3 = np.where((n_internal_coordinate_points_of_barrier == [a_x_new, a_y_new]).all(axis=1))[0]
-    talalat4 = np.where((n_internal_coordinate_points_of_barrier == [b_x_new, b_y_new]).all(axis=1))[0]
     
-    if (talalat1.size != 0 and talalat2.size != 0) or (talalat2.size != 0 and talalat3.size != 0) or (talalat1.size != 0 and talalat4.size != 0):
-        return False
-    else:
-        return True
+#Deleting bad intersection points when not in coordinate points
+def deleting_bad_intersection_points(intersection_points, n_coordinate_points):
+    del_ip = []
+    for ip in range(len(intersection_points)):
+        for idx in range(len(intersection_points[ip])):
+            in_coordinate_points = np.where((n_coordinate_points == intersection_points[ip][idx]).all(axis=1))[0]
+            if in_coordinate_points.size == 0:
+                del_ip.append([ip, idx])
+
+    for row, idx in sorted(del_ip, reverse=True):
+        del intersection_points[row][idx]
+
+#Searching good lines between intersection points
+def selecting_good_lines(intersection_points, b_lines, robot_size, n_internal_coordinate_points_of_barrier, n_outside_of_map, n_coordinate_points):
+    finally_b_lines = [[] for _ in range(len(b_lines))]
+    for count, ip in enumerate(intersection_points):
+        if len(ip) == 0:
+            continue
+        for i in range(len(ip) - 1):
+            dist = calculate_distance(ip[i], ip[i + 1]) 
+            if dist > robot_size:
+                line = bresenham(ip[i][0], ip[i][1], ip[i + 1][0], ip[i + 1][1])
+                n_line = np.array(line)
+                if n_line.size > 0:
+                    line_is_good = True
+                    for  l in range(len(n_line)):
+                        in_barrier = np.where((n_internal_coordinate_points_of_barrier == n_line[l]).all(axis=1))[0]
+                        in_outside = np.where((n_outside_of_map == n_line[l]).all(axis=1))[0]
+                        if in_barrier.size != 0 or in_outside.size != 0:
+                            line_is_good = False
+                            break
+                    if line_is_good: 
+                        for ll in range(len(n_line)):
+                            in_coordinate = np.where((n_coordinate_points == n_line[ll]).all(axis=1))[0]
+                            if in_coordinate.size == 0:
+                                finally_b_lines[count].append(n_line)
+                                break
+    return finally_b_lines
 
 # Cut line by robot size
-def cut_line_segment(x1, y1, x2, y2, d):
-    # Calculate direction vector
-    vx, vy = x2 - x1, y2 - y1
-    # Calculate length of the vector
-    h = math.sqrt(vx**2 + vy**2)
-    # if h smaler then distence return empty tuple
-    if h <= d:
-        return ()
-    # Calculate unit vector
-    ux, uy = vx / h, vy / h
-    # Calculate new start and end points
-    x1_new, y1_new = x1 + d * ux, y1 + d * uy
-    x2_new, y2_new = x2 - d * ux, y2 - d * uy
-    return (x1_new, y1_new, x2_new, y2_new)
+def trim_line(points, robot_size):
+    size = robot_size // 2
+    if len(points) <= 2 * size:
+        return np.array([])  # If the line is too short deleting
 
+    return points[size:-size]  # Cuts off the beginning and end
 
+def draw_bresenham_lines(b_lines, color):
+    for lines in b_lines:
+        for line in lines:
+            if len(line) == 0:
+                continue
+            x = line[:, 0]  # X coordinates
+            y = line[:, 1]  # Y coordinates
+            plt.plot(x, y, color=color)  
+
+# Draw lines in map
+def draw_lines(points, color):
+    for pt in points:
+        if pt == []:
+            continue
+        else:
+            for p in range(0,len(pt) - 1, 2):
+                plt.plot((pt[p][0], pt[p + 1][0]), (pt[p][1], pt[p + 1][1]), color=color, linewidth=1)
