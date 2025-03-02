@@ -1,6 +1,6 @@
 import numpy as np
-import math
 import matplotlib.pyplot as plt
+import math
 import copy
 
 # calculate_intersection_points.py
@@ -57,7 +57,6 @@ def draw_parallel_lines_with_angle(image, min_max_x_y_coord, angle_degrees, robo
     height, width = image.shape[:2]
     spacing = robot_size // 2
     
-
     # Angle degree to radian
     angle_radians = math.radians(angle_degrees)
     
@@ -130,7 +129,7 @@ def liang_barsky_clip(x1, y1, x2, y2, min_max_x_y_coord):
     y_max = min_max_x_y_coord[3]
     
     def clip(p, q, t0, t1):
-        if p == 0:  # Párhuzamos éllel
+        if p == 0:  # With parallel edge
             return (t0, t1) if q >= 0 else (None, None)
         t = q / p
         if p < 0:
@@ -189,6 +188,7 @@ def bresenham(x1, y1, x2, y2):
             y1 += sy
     
     return np.array(points)
+
 # Cuts the line to the edges of the picture frame and then calculates the points with Bresenham.
 def clip_and_draw_line(start_x, start_y, end_x, end_y, min_max_x_y_coord):
     x_min, y_min, x_max, y_max = min_max_x_y_coord
@@ -312,7 +312,6 @@ def merge_segments(shape_coordinates):
         sorted_indexes = []
         if len(indexes) > 0:
             sorted_indexes = sorted(indexes, key=lambda x: x[2], reverse=True)
-
         if len(sorted_indexes) > 0:
             # Filter unique indexes
             unique_indexes = []
@@ -339,10 +338,8 @@ def merge_segments(shape_coordinates):
             # Delete merged shapes
             for un_idx in range(len(unique_indexes)):
                 del shape_coordinates[unique_indexes[un_idx][2]]
-
         else:
             is_merging = False  # No more merges possible
-
     return 0
 
 # Moving perfect shapes in  new array
@@ -362,7 +359,6 @@ def perfect_shapes(shape_coordinates):
         if len(sort_del_shape) > 0:  
                 for ds_idx in range(len(sort_del_shape)):
                     del (shape_coordinates[sort_del_shape[ds_idx]])
-    
     return shapes
 
 # Checking start and end points in arrays
@@ -510,7 +506,6 @@ def calculate_intersection_points(edge_coordinates, lines, angle_degrees):
 # Calculate intersection points between two segments       
 def find_intersection_of_segments(segment1_f, segment1_e, segment2_f, segment2_e):
     # Start and end points of the first segment
-
     x1, y1 = segment1_f
     x2, y2 = segment1_e
     
@@ -526,15 +521,16 @@ def find_intersection_of_segments(segment1_f, segment1_e, segment2_f, segment2_e
     denominator = dx1 * dy2 - dy1 * dx2  # Determinant
 
     # If denominator is 0, the segments are parallel or collinear
-    if abs(denominator) < 1e-9:  
+    if abs(denominator) < 1e-6:  # Increased tolerance for parallel segments
         # Check for collinearity
-        if (y2 - y1) * (x3 - x1) == (x2 - x1) * (y3 - y1):  # Collinear check
-            # Find overlap in the x and y ranges
+        collinear_check = (y2 - y1) * (x3 - x1) == (x2 - x1) * (y3 - y1)
+        
+        if collinear_check:
+            # Find overlap in the x and y ranges with a slightly higher tolerance
             overlap_x1 = max(min(x1, x2), min(x3, x4))
             overlap_x2 = min(max(x1, x2), max(x3, x4))
             overlap_y1 = max(min(y1, y2), min(y3, y4))
             overlap_y2 = min(max(y1, y2), max(y3, y4))
-
             if overlap_x1 <= overlap_x2 and overlap_y1 <= overlap_y2:  # Check if there is a valid overlap
                 # Return the overlapping segment
                 return (overlap_x1, overlap_y1, overlap_x2, overlap_y2)
@@ -546,9 +542,9 @@ def find_intersection_of_segments(segment1_f, segment1_e, segment2_f, segment2_e
     
     t = numerator_t / denominator
     u = numerator_u / denominator
-   
-    # Check if the intersection point is within both segments (0 <= t, u <= 1)
-    epsilon = 1e-9  # Tolerance limit
+
+    # Check if the intersection point is within both segments (0 <= t, u <= 1) with adjusted epsilon
+    epsilon = 1e-6  # Adjusted tolerance limit
     if -epsilon <= t <= 1 + epsilon and -epsilon <= u <= 1 + epsilon:
         # The coordinate of the point of intersection
         intersection_x = x1 + t * dx1
@@ -556,7 +552,9 @@ def find_intersection_of_segments(segment1_f, segment1_e, segment2_f, segment2_e
         return (intersection_x, intersection_y)
     else:
         return None  # There is no intersection between the two segments
+
     
+
 #Deleting bad intersection points when not in coordinate points
 def deleting_bad_intersection_points(intersection_points, n_coordinate_points):
     del_ip = []
