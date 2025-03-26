@@ -3,8 +3,8 @@ import matplotlib.animation as animation
 #animation.py
 
 # Animation of the result on the image
-def animation_of_result(all_points, ax):
-    point, = ax.plot([], [], 'bo', markersize=5)
+def animation_of_result(all_points, ax, robot_size):
+    point, = ax.plot([], [], 'bo', markersize=robot_size)  # A pont nagyságát a robot méretéhez igazítjuk
 
     # Storing all points
     all_x = [p[0] for segment in all_points for p in segment]
@@ -19,4 +19,4 @@ def animation_of_result(all_points, ax):
         return point,
 
     ani = animation.FuncAnimation(ax.figure, update, frames=len(all_x), init_func=init, interval=50, blit=True)
-    return ani  
+    return ani
