@@ -193,6 +193,6 @@ ax.set_title(f"Angle= {angle_degrees}\nRobot size= {robot_size}\nRoute distance=
 ax.grid(False)
 
 # Save in the gif
-ani.save("my_room.gif", writer="pillow", fps=30)
+#ani.save("my_room.gif", writer="pillow", fps=30)
 
 plt.show()
