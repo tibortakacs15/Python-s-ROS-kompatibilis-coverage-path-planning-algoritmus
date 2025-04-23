@@ -4,7 +4,7 @@ import matplotlib.animation as animation
 
 # Animation of the result on the image
 def animation_of_result(all_points, ax, robot_size):
-    point, = ax.plot([], [], 'bo', markersize=robot_size)  # A pont nagyságát a robot méretéhez igazítjuk
+    point, = ax.plot([], [], 'bo', markersize=robot_size)  # The size of the point is adjusted to the size of the robot
 
     # Storing all points
     all_x = [p[0] for segment in all_points for p in segment]

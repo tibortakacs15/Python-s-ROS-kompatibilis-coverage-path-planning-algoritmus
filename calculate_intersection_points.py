@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import copy
+import sys
 
 # calculate_intersection_points.py
 
@@ -92,7 +93,8 @@ def draw_parallel_lines_with_angle(image, min_max_x_y_coord, angle_degrees, robo
         end_y = height - width * math.tan(angle_radians)
     
     # Apply scaling
-    center_x = (start_x + end_x) / 2
+
+    center_x = (start_x + end_x) / 2 
     center_y = (start_y + end_y) / 2
     start_x = center_x + (start_x - center_x) * scale_factor
     start_y = center_y + (start_y - center_y) * scale_factor
@@ -108,6 +110,7 @@ def draw_parallel_lines_with_angle(image, min_max_x_y_coord, angle_degrees, robo
         line_end_x = end_x + i * offset_x
         line_end_y = end_y + i * offset_y
         
+
         clipped_line = liang_barsky_clip(line_start_x, line_start_y, line_end_x, line_end_y, min_max_x_y_coord)
         if clipped_line:
             lines.append([
@@ -123,10 +126,10 @@ def clamp(value, min_value, max_value):
 
 # Liang-Barsky algorithm for cutting lines within an image frame.
 def liang_barsky_clip(x1, y1, x2, y2, min_max_x_y_coord):
-    x_min = min_max_x_y_coord[0] - 1
-    y_min  = min_max_x_y_coord[1] - 1
-    x_max = min_max_x_y_coord[2] + 1
-    y_max = min_max_x_y_coord[3] + 1
+    x_min = min_max_x_y_coord[0] - 2
+    y_min  = min_max_x_y_coord[1] - 2
+    x_max = min_max_x_y_coord[2] + 2
+    y_max = min_max_x_y_coord[3] + 2
     
     def clip(p, q, t0, t1):
         if p == 0:  # With parallel edge
@@ -437,17 +440,17 @@ def checking_start_and_end_points2(shape_coordinates):
     return is_change 
 
 def result_detection(shape_coordinates, shapes):
-    if len(shape_coordinates) == 0:
-        is_empty = True
+    is_empty = len(shape_coordinates) == 0
     ok_shape = True
     for s in shapes:
         if not np.array_equal(s[0], s[-1]):
             ok_shape = False
 
     if is_empty and ok_shape:
-        print('The all shapes will detectation!')
+       print('All shapes were detected!')
     else:
-        print('Does not detect all shapes!')
+        print('Not all shapes were detected!')
+        sys.exit("Exiting program: shape detection failed.")
 
 #  The shape points located between parallel lines
 def edges_of_the_shapes(lines, shapes):
@@ -670,7 +673,7 @@ def calculate_intersection_points_with_bresenham(shapes, square_lines, angle_deg
     return intersection_points
 
 def create_boundary_lines_on_the_sections(lines, robot_size):
-    robot_size /= 2
+    robot_size //= 2
     square_lines = [[] for _ in range(len(lines))]  
 
     for count, line_group in enumerate(lines): 
@@ -710,7 +713,7 @@ def create_boundary_lines_on_the_sections(lines, robot_size):
     return square_lines
 
 def cut_start_and_end_points_bresenham_lines(b_lines, shapes, robot_size, angle_degrees):
-    robot_size /= 2
+    robot_size //= 2
     cut_lines = []
     for b_line in b_lines:
         if len(b_line) == 0:
@@ -768,7 +771,8 @@ def cut_start_and_end_points_bresenham_lines(b_lines, shapes, robot_size, angle_
                start_idx = len(b_line)
 
         # End point
-        end_idx = int(-robot_size) - 2
+        #end_idx = int(-robot_size) - 2
+        end_idx = len(b_line) - int(robot_size) - 1
         is_ip = True
         while is_ip and -(len(b_line)) < end_idx:
             if end_idx < len(b_line):
@@ -820,7 +824,7 @@ def cut_start_and_end_points_bresenham_lines(b_lines, shapes, robot_size, angle_
             else:
                 end_idx = len(b_line)
         # To get to the edge of the map, we subtract 1 from start_idx and add 1 to end_idx
-        trimmed_points = b_line[start_idx:end_idx]
+        trimmed_points = b_line[start_idx:end_idx + 1]
         if len(trimmed_points) > 1:
             cut_lines.append(trimmed_points)
     return cut_lines

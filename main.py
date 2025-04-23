@@ -7,7 +7,7 @@ from scipy import ndimage
 from animation import animation_of_result
 from graph import *
 # creating_nearborn_list, connecting_sections, heapify_up, heapify_down, push_heap, pop_heap, dijkstra
-from area import calculating_route_distance, create_grid
+from area import calculating_route_distance, calculate_coverage
 from calculate_intersection_points import *
 # deep_swap, rgb2gray, calculate_edges_coordinates, min_max_coord, degrees_to_slope, plot_parallel_lines, clamp, liang_barsky_clip, bresenham, 
 # clip_and_draw_line, edges_of_the_shapes, calculate_distance, connecting_the_points, insert_and_remove_one_coordinate_array, merge_segments, 
@@ -55,11 +55,13 @@ n_internal_coordinate_points_of_barrier = np.array(internal_coordinate_points_of
 
 min_max_x_y_coord = min_max_coord(coordinate_points)
 
-angle_degrees = 0 # Angle of inclination of the lines
-robot_size = 7
+angle_degrees = 178 # Angle of inclination of the lines
+robot_size = 9
 scale_factor = 2
 
 lines = draw_parallel_lines_with_angle(img, min_max_x_y_coord, angle_degrees, robot_size, scale_factor)
+
+#draw_lines(lines, 'green')
 
 b_lines = []
 for l in lines:
@@ -98,9 +100,24 @@ edge_coordinates = edges_of_the_shapes(b_lines, shapes)
 
 intersection_points = calculate_intersection_points(edge_coordinates, b_lines, angle_degrees)
 
+'''for intersection_p in intersection_points:
+    for ip in intersection_p:
+        plt.scatter(ip[0], ip[1], color='red')'''
+
 deleting_bad_intersection_points(intersection_points, n_coordinate_points)
 
+'''for intersection_p in intersection_points:
+    for ip in intersection_p:
+        plt.scatter(ip[0], ip[1], color='green')'''
+
 good_b_lines = selecting_good_lines(intersection_points, b_lines, robot_size, n_internal_coordinate_points_of_barrier, n_outside_of_map, n_coordinate_points)
+
+'''for good_b_l in good_b_lines:
+    for gbl in good_b_l:
+        for bl in range(len(gbl) - 1):
+            #print(bl[0], bl[1])
+            plt.plot((gbl[bl][0], gbl[bl + 1][0]), (gbl[bl][1], gbl[bl + 1][1]), color='red')
+'''
 
 cut_good_b_lines = []
 for g_b_lines in good_b_lines:
@@ -114,7 +131,7 @@ square_lines_on_the_sections = create_boundary_lines_on_the_sections(cut_good_b_
 
 b_s_lines_on_the_sections = lines_convert_to_bresenham_lines(square_lines_on_the_sections)
 
-intersection_points_on_the_sections = calculate_intersection_points_with_bresenham(shapes, b_s_lines_on_the_sections, robot_size)
+intersection_points_on_the_sections = calculate_intersection_points_with_bresenham(shapes, b_s_lines_on_the_sections, angle_degrees)
 
 cut_sections = []
 for  cgbl, ips in zip(cut_good_b_lines, intersection_points_on_the_sections):
@@ -128,8 +145,11 @@ for count, c_sections in enumerate(cut_sections):
     for cs in c_sections:
         good_cut_sections[count].append([cs[0], cs[-1]])  # Első és utolsó elem hozzáadása
 
+
 # Merges internal lists
 finally_good_cut_sections = [sum(gcs, []) for gcs in good_cut_sections if gcs]
+
+
 
 #Creating_nearborn_list
 neighborhood_list = creating_nearborn_list(finally_good_cut_sections, shapes)
@@ -205,10 +225,10 @@ route_distance = calculating_route_distance(visited_points)
 imgplot = ax.imshow(img)  
 
 # Animation initialization
-ani = animation_of_result(all_points, ax, robot_size)
+#ani = animation_of_result(all_points, ax, robot_size)
 
 # Tittle setting
-ax.set_title("ISOC")
+ax.set_title(f"Result\n")
 
 ax.grid(False)
 
@@ -221,11 +241,11 @@ result_text = f"Angle: {angle_degrees}             Robot size: {robot_size}\nRou
 
 plt.subplots_adjust(bottom=0.1) 
 
-plt.figtext(0.25, 0.1, result_text, ha='center', fontsize=12, bbox=dict(boxstyle="round,pad=0.3", edgecolor="black", facecolor="white"))
+plt.figtext(0.05, 0.045, result_text, ha='left', fontsize=12, bbox=dict(boxstyle="round,pad=0.3", edgecolor="black", facecolor="white"))
 
 # Save in the gif
 #ani.save("my_room.gif", writer="pillow", fps=60)
 
 plt.show()
 
-create_grid(shapes, visited_points, robot_size)
+calculate_coverage(shapes, visited_points, robot_size)
