@@ -3,21 +3,22 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import matplotlib.animation as animation
 import sys
-from scipy import ndimage
-from animation import animation_of_result
-from graph import *
-# creating_nearborn_list, connecting_sections, heapify_up, heapify_down, push_heap, pop_heap, dijkstra
-from area import calculating_route_distance, calculate_coverage
-from calculate_intersection_points import *
-# deep_swap, rgb2gray, calculate_edges_coordinates, min_max_coord, degrees_to_slope, plot_parallel_lines, clamp, liang_barsky_clip, bresenham, 
-# clip_and_draw_line, edges_of_the_shapes, calculate_distance, connecting_the_points, insert_and_remove_one_coordinate_array, merge_segments, 
-# perfect_shapes, find_intersection_of_segments, checking_start_and_end_points1, checking_start_and_end_points2, result_detection,
-# edges_of_the_shapes, calculate_intersection_points, find_intersection_of_segments, deleting_bad_intersection_points, 
-# selecting_good_lines, trim_line, draw_bresenham_lines, draw_lines
 import time
+from scipy import ndimage
+
+from map_procesisng import *
+from calculation_of_parallel_lines import *
+from save_map_and_obstacle_boundaries import *
+from calculation_of_intersection_points import *
+from calculating_auxiliary_lines import *
+from staggering_of_main_lines import *
+from calculation_of_coverage import *
+from animation import animation_of_result
 
 
 start_time = time.perf_counter()
+
+# 1. Map processing
 
 if len(sys.argv) < 2:
     print("Usage: python file_reader_simple.py <filename>")
@@ -54,10 +55,11 @@ n_internal_coordinate_points = np.array(internal_coordinate_points)
 n_internal_coordinate_points_of_barrier = np.array(internal_coordinate_points_of_barrier)
 
 min_max_x_y_coord = min_max_coord(coordinate_points)
-
-angle_degrees = 178 # Angle of inclination of the lines
-robot_size = 9
+angle_degrees = 91 # Angle of inclination of the lines
+robot_size = 5
 scale_factor = 2
+
+# 2. Calculation of parallel lines
 
 lines = draw_parallel_lines_with_angle(img, min_max_x_y_coord, angle_degrees, robot_size, scale_factor)
 
@@ -66,6 +68,9 @@ lines = draw_parallel_lines_with_angle(img, min_max_x_y_coord, angle_degrees, ro
 b_lines = []
 for l in lines:
     b_lines.append(bresenham(l[0][0], l[0][1], l[1][0], l[1][1]))
+
+
+#3. Save map and obstacle boundaries
 
 shape_coordinates = []
 shape_coordinates.append(connecting_the_points(n_coordinate_points))
@@ -96,28 +101,17 @@ shapes = [the_biggest_polygon] + [shape for shape in polygon if shape is not the
 
 result_detection(shape_coordinates[0], shapes)
 
+ # 4. Calculation of intersection points
+
 edge_coordinates = edges_of_the_shapes(b_lines, shapes)
 
 intersection_points = calculate_intersection_points(edge_coordinates, b_lines, angle_degrees)
 
-'''for intersection_p in intersection_points:
-    for ip in intersection_p:
-        plt.scatter(ip[0], ip[1], color='red')'''
-
 deleting_bad_intersection_points(intersection_points, n_coordinate_points)
-
-'''for intersection_p in intersection_points:
-    for ip in intersection_p:
-        plt.scatter(ip[0], ip[1], color='green')'''
 
 good_b_lines = selecting_good_lines(intersection_points, b_lines, robot_size, n_internal_coordinate_points_of_barrier, n_outside_of_map, n_coordinate_points)
 
-'''for good_b_l in good_b_lines:
-    for gbl in good_b_l:
-        for bl in range(len(gbl) - 1):
-            #print(bl[0], bl[1])
-            plt.plot((gbl[bl][0], gbl[bl + 1][0]), (gbl[bl][1], gbl[bl + 1][1]), color='red')
-'''
+# 5.Staggering of main lines
 
 cut_good_b_lines = []
 for g_b_lines in good_b_lines:
@@ -149,7 +143,9 @@ for count, c_sections in enumerate(cut_sections):
 # Merges internal lists
 finally_good_cut_sections = [sum(gcs, []) for gcs in good_cut_sections if gcs]
 
+draw_lines(finally_good_cut_sections, 'red')
 
+# 6. Calculating auxiliary lines
 
 #Creating_nearborn_list
 neighborhood_list = creating_nearborn_list(finally_good_cut_sections, shapes)
@@ -221,6 +217,8 @@ for p in range(len(visited_points) - 1):
 # Calculating route distance
 route_distance = calculating_route_distance(visited_points)
 
+# Show result
+
 #Show result on image
 imgplot = ax.imshow(img)  
 
@@ -241,11 +239,13 @@ result_text = f"Angle: {angle_degrees}             Robot size: {robot_size}\nRou
 
 plt.subplots_adjust(bottom=0.1) 
 
-plt.figtext(0.05, 0.045, result_text, ha='left', fontsize=12, bbox=dict(boxstyle="round,pad=0.3", edgecolor="black", facecolor="white"))
+plt.figtext(0.005, 0.005, result_text, ha='left', fontsize=12, bbox=dict(boxstyle="round,pad=0.3", edgecolor="black", facecolor="white"))
 
 # Save in the gif
 #ani.save("my_room.gif", writer="pillow", fps=60)
 
 plt.show()
+
+# 7. Calculation of coverage
 
 calculate_coverage(shapes, visited_points, robot_size)
