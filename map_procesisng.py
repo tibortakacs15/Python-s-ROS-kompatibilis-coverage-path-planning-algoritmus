@@ -2,6 +2,7 @@ import numpy as np
 
 # map_processing.py
 
+
 # Convert RGB to grayscale manually
 def rgb2gray(rgb):
     return np.dot(rgb[...,:3], [0.2989, 0.5870, 0.1140])

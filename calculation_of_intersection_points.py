@@ -1,32 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-import copy
-import sys
 
 from calculation_of_parallel_lines import bresenham
 from save_map_and_obstacle_boundaries import calculate_distance
 
 # calculate_of_intersection_points.py
 
-# Draw lines in map
-def draw_lines(points, color):
-    for pt in points:
-        if pt == []:
-            continue
-        else:
-            for p in range(0,len(pt) - 1, 2):
-                plt.plot((pt[p][0], pt[p + 1][0]), (pt[p][1], pt[p + 1][1]), color=color, linewidth=1)
-
-
-
-# Calculate list depth
-def get_list_depth(lst, depth=0):
-    if isinstance(lst, list):
-        return max(get_list_depth(item, depth + 1) for item in lst) if lst else depth
-    return depth
-
-# 4. Calculation of intersection points
 
 #  The shape points located between parallel lines
 def edges_of_the_shapes(lines, shapes):
@@ -148,7 +128,7 @@ def deleting_bad_intersection_points(intersection_points, n_coordinate_points):
         del intersection_points[row][idx]
 
 #Searching good lines between intersection points
-def selecting_good_lines(intersection_points, b_lines, robot_size, n_internal_coordinate_points_of_barrier, n_outside_of_map, n_coordinate_points):
+def selecting_good_lines(intersection_points, b_lines, robot_size, n_internal_coordinate_points_of_obstacle, n_outside_of_map, n_coordinate_points):
     finally_b_lines = [[] for _ in range(len(b_lines))]
     for count, ip in enumerate(intersection_points):
         if len(ip) == 0:
@@ -161,9 +141,9 @@ def selecting_good_lines(intersection_points, b_lines, robot_size, n_internal_co
                 if n_line.size > 0:
                     line_is_good = True
                     for  l in range(len(n_line)):
-                        in_barrier = np.where((n_internal_coordinate_points_of_barrier == n_line[l]).all(axis=1))[0]
+                        in_obstacle = np.where((n_internal_coordinate_points_of_obstacle == n_line[l]).all(axis=1))[0]
                         in_outside = np.where((n_outside_of_map == n_line[l]).all(axis=1))[0]
-                        if in_barrier.size != 0 or in_outside.size != 0:
+                        if in_obstacle.size != 0 or in_outside.size != 0:
                             line_is_good = False
                             break
                     if line_is_good: 
@@ -174,3 +154,18 @@ def selecting_good_lines(intersection_points, b_lines, robot_size, n_internal_co
                                 break
     return finally_b_lines
 
+# Draw lines in map
+def draw_lines(points, color):
+    for pt in points:
+        if pt == []:
+            continue
+        else:
+            for p in range(0,len(pt) - 1, 2):
+                plt.plot((pt[p][0], pt[p + 1][0]), (pt[p][1], pt[p + 1][1]), color=color, linewidth=1)
+
+# Calculate list depth
+def get_list_depth(lst, depth=0):
+    if isinstance(lst, list):
+        return max(get_list_depth(item, depth + 1) for item in lst) if lst else depth
+    
+    return depth

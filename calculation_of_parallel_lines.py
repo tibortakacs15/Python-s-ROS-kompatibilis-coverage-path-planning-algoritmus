@@ -3,6 +3,7 @@ import math
 
 # calculation_of_parallel_lines.py
 
+
 def draw_parallel_lines_with_angle(image, min_max_x_y_coord, angle_degrees, robot_size, scale_factor):
     height, width = image.shape[:2]
     spacing = robot_size

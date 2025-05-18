@@ -1,5 +1,9 @@
 import pandas as pd
 
+# Evaluation of the results achieved
+# Using the Performance Index
+# Performance Index = Coverage Ratio * Coverage Efficiency   
+
 df = pd.read_excel('./ISOC_result/Living_room_11/Living_room_11_result.xlsx', header=1)
 
 df["Coverage Ratio"] = df["Coverage (%)"] / 100

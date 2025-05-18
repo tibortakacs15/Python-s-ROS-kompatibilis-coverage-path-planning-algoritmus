@@ -5,6 +5,7 @@ import copy
 
 # save_map_and_obstacle_boundaries.py
 
+
 SQUARE_ROOR_2 = math.sqrt(2)
 
 def deep_swap(array, index1, index2):
@@ -136,6 +137,7 @@ def merge_segments(shape_coordinates):
                 del shape_coordinates[unique_indexes[un_idx][2]]
         else:
             is_merging = False  # No more merges possible
+    
     return 0
 
 # Moving perfect shapes in  new array
@@ -155,8 +157,8 @@ def perfect_shapes(shape_coordinates):
         if len(sort_del_shape) > 0:  
                 for ds_idx in range(len(sort_del_shape)):
                     del (shape_coordinates[sort_del_shape[ds_idx]])
+    
     return shapes
-
 
 # Checking start and end points in arrays
 def checking_start_and_end_points1(shape_coordinates):
@@ -198,8 +200,8 @@ def checking_start_and_end_points1(shape_coordinates):
                         is_change = True
                     elif dist1 == 1 and dist2 == SQUARE_ROOR_2 and dist3 == 1:
                         deep_swap(sublist, -1, -2)
-                        is_change = True
-                        
+                        is_change = True                      
+    
     return is_change
 
 # Checking start and end points in arrays

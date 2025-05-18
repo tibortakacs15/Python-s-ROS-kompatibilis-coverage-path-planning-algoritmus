@@ -2,8 +2,9 @@ from calculation_of_intersection_points import calculate_distance, find_intersec
 
 # calculating_auxiliary_lines.py
 
+
 # Creating nearborn list between  points 
-#If there is a barrier between 2 points, there is no connection between them
+#If there is a obstacle between 2 points, there is no connection between them
 def creating_nearborn_list(intersection_points, shapes):
     neighborhood_list = {}
 
@@ -17,30 +18,30 @@ def creating_nearborn_list(intersection_points, shapes):
             neighbors_key1 = []
             neighbors_key2 = []
             for point in range(len(next_row)):
-                inter1 = []
+                inters1 = []
                 for shape in range(len(shapes)):
                     for j in range(len(shapes[shape]) - 1):
-                        inter1.append(find_intersection_of_segments(key1, next_row[point], shapes[shape][j], shapes[shape][j - 1]))
-                if all(element is None for element in inter1):
+                        inters1.append(find_intersection_of_segments(key1, next_row[point], shapes[shape][j], shapes[shape][j - 1]))
+                if all(element is None for element in inters1):
                     neighbors_key1.append((tuple(next_row[point]), calculate_distance(key1, next_row[point])))
-                inter2 = []
+                inters2 = []
                 for shape in range(len(shapes)):
                     for j in range(len(shapes[shape]) - 1):
-                        inter2.append(find_intersection_of_segments(key2, next_row[point], shapes[shape][j], shapes[shape][j - 1]))
-                if all(element is None for element in inter2):
+                        inters2.append(find_intersection_of_segments(key2, next_row[point], shapes[shape][j], shapes[shape][j - 1]))
+                if all(element is None for element in inters2):
                     neighbors_key2.append((tuple(next_row[point]), calculate_distance(key2, next_row[point])))
             for point in range(len(previous_row)):
-                inter1 = []
+                inters1 = []
                 for shape in range(len(shapes)):
                     for j in range(len(shapes[shape]) - 1):
-                        inter1.append(find_intersection_of_segments(key1, previous_row[point], shapes[shape][j], shapes[shape][j - 1]))
-                if all(element is None for element in inter1):
+                        inters1.append(find_intersection_of_segments(key1, previous_row[point], shapes[shape][j], shapes[shape][j - 1]))
+                if all(element is None for element in inters1):
                     neighbors_key1.append((tuple(previous_row[point]), calculate_distance(key1, previous_row[point])))
-                inter2 = []
+                inters2 = []
                 for shape in range(len(shapes)):
                     for j in range(len(shapes[shape]) - 1):
-                        inter2.append(find_intersection_of_segments(key2, previous_row[point], shapes[shape][j], shapes[shape][j - 1]))
-                if all(element is None for element in inter2):
+                        inters2.append(find_intersection_of_segments(key2, previous_row[point], shapes[shape][j], shapes[shape][j - 1]))
+                if all(element is None for element in inters2):
                     neighbors_key2.append((tuple(previous_row[point]), calculate_distance(key2, previous_row[point])))
             
             # Add point and distance

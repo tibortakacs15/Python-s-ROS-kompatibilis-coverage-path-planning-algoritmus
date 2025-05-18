@@ -47,16 +47,16 @@ labeled_edges, num_features = ndimage.label(n_binary_image)
 coordinate_points = calculate_edges_coordinates(labeled_edges, 0)
 outside_of_map = calculate_edges_coordinates(labeled_edges, 1)
 internal_coordinate_points = calculate_edges_coordinates(labeled_edges, 2)
-internal_coordinate_points_of_barrier = calculate_edges_coordinates(labeled_edges, num_features)
+internal_coordinate_points_of_obstacle = calculate_edges_coordinates(labeled_edges, num_features)
 
 n_coordinate_points = np.array(coordinate_points)
 n_outside_of_map = np.array(outside_of_map)
 n_internal_coordinate_points = np.array(internal_coordinate_points)
-n_internal_coordinate_points_of_barrier = np.array(internal_coordinate_points_of_barrier)
+n_internal_coordinate_points_of_obstacle = np.array(internal_coordinate_points_of_obstacle)
 
 min_max_x_y_coord = min_max_coord(coordinate_points)
-angle_degrees = 91 # Angle of inclination of the lines
-robot_size = 5
+angle_degrees = 0 # Angle of inclination of the lines
+robot_size = 19
 scale_factor = 2
 
 # 2. Calculation of parallel lines
@@ -109,7 +109,7 @@ intersection_points = calculate_intersection_points(edge_coordinates, b_lines, a
 
 deleting_bad_intersection_points(intersection_points, n_coordinate_points)
 
-good_b_lines = selecting_good_lines(intersection_points, b_lines, robot_size, n_internal_coordinate_points_of_barrier, n_outside_of_map, n_coordinate_points)
+good_b_lines = selecting_good_lines(intersection_points, b_lines, robot_size, n_internal_coordinate_points_of_obstacle, n_outside_of_map, n_coordinate_points)
 
 # 5.Staggering of main lines
 
